@@ -25,8 +25,9 @@ while(1):
 	# get each frame
 	_, frame = cap.read()
 	frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+	ox,oy = frame.shape
 	frame = cv2.resize(frame,(0,0),fx=0.5,fy=0.5)
-
+	rx,ry = frame.shape
 	t1 = time.time()
 	t2 = t1
 
@@ -72,8 +73,13 @@ while(1):
 	# get processing time for each frame
 	td = t2 - t1
 	textTime = "Time to process this frame: " + str(td) + " seconds."
-
+	oSizeInfo = "Original res " + str(ox) + "x" + str(oy)
+	rSizeInfo = "New res " + str(rx) + "x" + str(ry)
 	res = cv2.putText(res,textTime,(10,30), cv2.FONT_HERSHEY_SIMPLEX,\
+		0.5, (10,10,10),1, cv2.LINE_AA)
+	res = cv2.putText(res,oSizeInfo,(10,45), cv2.FONT_HERSHEY_SIMPLEX,\
+		0.5, (10,10,10),1, cv2.LINE_AA)
+	res = cv2.putText(res,rSizeInfo,(10,60), cv2.FONT_HERSHEY_SIMPLEX,\
 		0.5, (10,10,10),1, cv2.LINE_AA)
  
 	cv2.imshow('Tracking', res)
