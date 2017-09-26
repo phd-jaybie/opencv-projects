@@ -15,13 +15,11 @@ FLANN_INDEX_KDTREE = 0
 FLANN_INDEX_LSH = 6
 index_params = dict(algorithm = FLANN_INDEX_LSH,\
 	table_number = 6, key_size = 12, multi_proble_level = 1)
-#index_params = dict(algorithm = FLANN_INDEX_KDTREE, tree = 5)
 search_params = dict(checks = 20)
 
 flann = cv2.FlannBasedMatcher(index_params, search_params)
 
-bf = cv2.BFMatcher()
-#cv2.NORM_HAMMING, crossCheck = True)
+bf = cv2.BFMatcher()#cv2.NORM_HAMMING, crossCheck = True)
 
 img1 = cv2.imread('train.jpg',0)          # queryImage
 
@@ -31,15 +29,12 @@ frameCount = 0
 # Initiate ORB detector
 brisk = cv2.BRISK_create()
 
-# Initiate SIFT detector
-sift = cv2.xfeatures2d.SIFT_create()
-
 # find the keypoints and descriptors from the training image with SIFT
-kp1, des1 = sift.detectAndCompute(img1,None)
+kp1, des1 = brisk.detectAndCompute(img1,None)
 
-print("Frame, Time to process, Training Descriptors, Query Descriptors, Matches, Min Distance")
+print("Frame, Time to process, Training Descriptors, Query Descriptors, Good matches")
 
-while(frameCount<100):
+while(1):
 	# get each frame
 	_, frame = cap.read()
 	frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -51,18 +46,15 @@ while(frameCount<100):
 	frameCount = frameCount + 1
 
 	# find features on the frame with SIFT/ORB
-	kp2, des2 = sift.detectAndCompute(frame,None)
+	kp2, des2 = brisk.detectAndCompute(frame,None)
 
-	matches = bf.knnMatch(des1,des2,k=2)
- 
+	matches = flann.knnMatch(des1,des2,k=2)
+
 	# store all the good matches as per Lowe's ratio test.
 	good = []
-	
 	for m,n in matches:
 		if m.distance < 0.75*n.distance:
 			good.append(m)
-
-	good = sorted(good, key = lambda x:x.distance)
 	
 	# if enough matches are found
 	if len(good)>MIN_MATCH_COUNT:
@@ -86,7 +78,7 @@ while(frameCount<100):
 		matchesMask = None
 	
 	t2 = time.time()
-	print("%d, %.5f, %d, %d, %d, %.5f" % (frameCount,t2-t1,len(des1),len(des2),len(good),good[0].distance))
+	print("%d, %.5f, %d, %d, %d" % (frameCount,t2-t1,len(des1),len(des2),len(good)))
 
 	# get processing time for each frame
 	#td = t2 - t1
