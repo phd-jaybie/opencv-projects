@@ -4,112 +4,150 @@
 # Adapted from the image detection sample code from the openc-python
 # tutorial at http://docs.opencv.org/3.3.0/d1/de0/tutorial_py_feature_homography.html
 
+import sys
 import numpy as np
 import cv2
 import time
 #from matplotlib import pyplot as plt
 
-MIN_MATCH_COUNT = 10
+if __name__ == '__main__':
+	# some global variables
+	search_params = dict(checks = 20) # this is for the flann-based matcher
+	MIN_MATCH_COUNT = 10 # very relaxed matching at 10 matches minimum
 
-FLANN_INDEX_KDTREE = 0
-FLANN_INDEX_LSH = 6
-index_params = dict(algorithm = FLANN_INDEX_LSH,\
-	table_number = 6, key_size = 12, multi_proble_level = 1)
-#index_params = dict(algorithm = FLANN_INDEX_KDTREE, tree = 5)
-search_params = dict(checks = 20)
+	if len(sys.argv) > 1:
 
-flann = cv2.FlannBasedMatcher(index_params, search_params)
+		# from arguments, check what feature detector algorithm
+		if 'sift' in sys.argv:
+			detector = cv2.xfeatures2d.SIFT_create()
+			FLANN_INDEX_KDTREE = 0
+			index_params = dict(algorithm = FLANN_INDEX_KDTREE, tree = 5)
+			print("Using SIFT algorithm")
+		else:
+			detector = cv2.BRISK_create()
+			FLANN_INDEX_LSH = 6
+			index_params = dict(algorithm = FLANN_INDEX_LSH,\
+			table_number = 6, key_size = 12, multi_proble_level = 1)
+			print("Using BRISK algorithm")
 
-bf = cv2.BFMatcher()
-#cv2.NORM_HAMMING, crossCheck = True)
-
-img1 = cv2.imread('train.jpg',0)          # queryImage
-
-cap = cv2.VideoCapture(0)
-
-frameCount = 0
-# Initiate ORB detector
-brisk = cv2.BRISK_create()
-
-# Initiate SIFT detector
-sift = cv2.xfeatures2d.SIFT_create()
-
-# find the keypoints and descriptors from the training image with SIFT
-kp1, des1 = sift.detectAndCompute(img1,None)
-
-print("Frame, Time to process, Training Descriptors, Query Descriptors, Matches, Min Distance")
-
-while(frameCount<100):
-	# get each frame
-	_, frame = cap.read()
-	frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-	ox,oy = frame.shape
-	frame = cv2.resize(frame,(0,0),fx=0.5,fy=0.5)
-	rx,ry = frame.shape
-
-	t1 = time.time()
-	frameCount = frameCount + 1
-
-	# find features on the frame with SIFT/ORB
-	kp2, des2 = sift.detectAndCompute(frame,None)
-
-	matches = bf.knnMatch(des1,des2,k=2)
- 
-	# store all the good matches as per Lowe's ratio test.
-	good = []
-	
-	for m,n in matches:
-		if m.distance < 0.75*n.distance:
-			good.append(m)
-
-	good = sorted(good, key = lambda x:x.distance)
-	
-	# if enough matches are found
-	if len(good)>MIN_MATCH_COUNT:
-		# extract location of points in both images
-		src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
-		dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
-
-		# find the perspective transform
-		M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
-		matchesMask = mask.ravel().tolist()
+		# from arguments, check what matcher is used
+		if 'flann' in sys.argv:
+			matcher = cv2.FlannBasedMatcher(index_params, search_params)
+			print("Using flann-based matcher")
+		else:
+			matcher = cv2.BFMatcher()
+			print("Using brute force matcher")
 		
-		# get the transform points in the (captured) query image
-		h,w = img1.shape
-		pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
-		dst = cv2.perspectiveTransform(pts,M)
-
-		# draw the transformed image
-		res = cv2.polylines(frame,[np.int32(dst)],True,255,3, cv2.LINE_AA)
+		# from arguments, check matching algorithm
+		if 'match' in sys.argv:
+			print("Using regular matching")
+		else:
+			print("Using knn matching")
 	else:
-		res = frame
-		matchesMask = None
+		detector = cv2.xfeatures2d.SIFT_create()
+		FLANN_INDEX_KDTREE = 0
+		index_params = dict(algorithm = FLANN_INDEX_KDTREE, tree = 5)
+		print("Default: Using SIFT algorithm")
+		matcher = cv2.FlannBasedMatcher(index_params, search_params)
+		print("Default: Using flann-based matcher")
+		print("Default: Using knn matching")
+
+	if 'jpg' in sys.argv[-1] or 'png' in sys.argv[-1]:
+		img1 = cv2.imread(str(sys.argv[-1]),0)          # queryImage
+	else:
+		# change this if needs to query multiple images
+		img1 = cv2.imread('train.jpg',0)          # queryImage
+
+	cap = cv2.VideoCapture(0)
+
+	frameCount = 0
 	
-	t2 = time.time()
-	print("%d, %.5f, %d, %d, %d, %.5f" % (frameCount,t2-t1,len(des1),len(des2),len(good),good[0].distance))
+	# find the keypoints and descriptors from the training image with SIFT
+	kp1, des1 = detector.detectAndCompute(img1,None)
 
-	# get processing time for each frame
-	#td = t2 - t1
-	#textTime = "Time to process this frame: " + str(td) + " seconds."
-	#oSizeInfo = "Original res " + str(ox) + "x" + str(oy)
-	#rSizeInfo = "New res " + str(rx) + "x" + str(ry)
-	#res = cv2.putText(res,textTime,(10,30), cv2.FONT_HERSHEY_SIMPLEX,\
-	#	0.5, (10,10,10),1, cv2.LINE_AA)
-	#res = cv2.putText(res,oSizeInfo,(10,45), cv2.FONT_HERSHEY_SIMPLEX,\
-	#	0.5, (10,10,10),1, cv2.LINE_AA)
-	#res = cv2.putText(res,rSizeInfo,(10,60), cv2.FONT_HERSHEY_SIMPLEX,\
-	#	0.5, (10,10,10),1, cv2.LINE_AA)
- 
-	draw_params = dict(matchColor = (0,255,0), singlePointColor = None,\
-		matchesMask = matchesMask, flags = 2)
-	img3 = cv2.drawMatches(img1,kp1,frame,kp2,good,None,**draw_params)
-	
-	#cv2.imshow('Detected', res)
-	cv2.imshow('Matches',img3) # shows the matching lines for checking
+	print("Frame, t_detect, t_match, t_sort , t_transform, Training Descriptors, Query Descriptors, Matches, Min Distance, Max Distance")
 
-	k = cv2.waitKey(5) & 0xFF
-	if k ==27:
-		break
+	while(frameCount<100):
+		# get each frame
+		_, frame = cap.read()
+		frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+		ox,oy = frame.shape
+		frame = cv2.resize(frame,(0,0),fx=0.5,fy=0.5)
+		rx,ry = frame.shape
 
-cap.release()
-cv2.destroyAllWindows()
+		t_start = time.clock()
+		frameCount = frameCount + 1
+
+		# find features on the frame with SIFT/ORB
+		kp2, des2 = detector.detectAndCompute(frame,None)
+		t_detect = time.process_time()
+
+		if 'match' in sys.argv:
+			good = matcher.match(des1,des2)	
+			t_match = time.process_time()
+		else:
+			#change this if want to use any k
+			matches = matcher.knnMatch(des1,des2,k=2)
+			t_match = time.process_time()
+			 
+			# store all the good matches as per Lowe's ratio test.
+			good = []
+			
+			for m,n in matches:
+				if m.distance < 0.75*n.distance:
+					good.append(m)
+
+		good = sorted(good, key = lambda x:x.distance)
+		t_sort = time.process_time()
+
+		# if enough matches are found
+		if len(good)>MIN_MATCH_COUNT:
+			# extract location of points in both images
+			src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
+			dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
+
+			# find the perspective transform
+			M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+			matchesMask = mask.ravel().tolist()
+			
+			# get the transform points in the (captured) query image
+			h,w = img1.shape
+			pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+			dst = cv2.perspectiveTransform(pts,M)
+
+			# draw the transformed image
+			res = cv2.drawContours(frame,[np.int32(dst)],-1,255,3)
+		else:
+			res = frame
+			matchesMask = None
+		
+		t_transform = time.process_time()
+		print("%d, %.5f, %.5f, %.5f, %.5f, %d, %d, %d, %.5f, %.5f" % (frameCount, \
+			t_detect-t_start, t_match-t_detect, t_sort-t_match, t_transform-t_sort, \
+			len(des1),len(des2),len(good),good[0].distance,good[-1].distance))
+
+		# get processing time for each frame
+		#td = t2 - t1
+		#textTime = "Time to process this frame: " + str(td) + " seconds."
+		#oSizeInfo = "Original res " + str(ox) + "x" + str(oy)
+		#rSizeInfo = "New res " + str(rx) + "x" + str(ry)
+		#res = cv2.putText(res,textTime,(10,30), cv2.FONT_HERSHEY_SIMPLEX,\
+		#	0.5, (10,10,10),1, cv2.LINE_AA)
+		#res = cv2.putText(res,oSizeInfo,(10,45), cv2.FONT_HERSHEY_SIMPLEX,\
+		#	0.5, (10,10,10),1, cv2.LINE_AA)
+		#res = cv2.putText(res,rSizeInfo,(10,60), cv2.FONT_HERSHEY_SIMPLEX,\
+		#	0.5, (10,10,10),1, cv2.LINE_AA)
+	 
+		draw_params = dict(matchColor = (0,255,0), singlePointColor = None,\
+			matchesMask = matchesMask, flags = 2)
+		img3 = cv2.drawMatches(img1,kp1,frame,kp2,good,None,**draw_params)
+		
+		#cv2.imshow('Detected', res)
+		cv2.imshow('Matches',img3) # shows the matching lines for checking
+
+		k = cv2.waitKey(5) & 0xFF
+		if k ==27:
+			break
+
+	cap.release()
+	cv2.destroyAllWindows()
