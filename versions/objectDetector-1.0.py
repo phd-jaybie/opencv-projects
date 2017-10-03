@@ -4,14 +4,14 @@
 # Adapted from the image detection sample code from the openc-python
 # tutorial at http://docs.opencv.org/3.3.0/d1/de0/tutorial_py_feature_homography.html
 
-# Version info:	1.1 - 	this version shows histogram information of the distance calculation
-#			of the query and reference descriptors which was used for matching.
+# Version info: 1.0 -	is the vanilla version which accepts arguments for the following:
+#			descriptor algorithm, matching algorithm/s.
 
 import sys
 import numpy as np
 import cv2
 import time
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 
 if __name__ == '__main__':
 	# some global variables
@@ -95,10 +95,8 @@ if __name__ == '__main__':
 			 
 			# store all the good matches as per Lowe's ratio test.
 			good = []
-			distances = []
 			
 			for m,n in matches:
-				distances.append(m.distance)
 				if m.distance < 0.75*n.distance:
 					good.append(m)
 
@@ -146,12 +144,9 @@ if __name__ == '__main__':
 		draw_params = dict(matchColor = (0,255,0), singlePointColor = None,\
 			matchesMask = matchesMask, flags = 2)
 		img3 = cv2.drawMatches(img1,kp1,frame,kp2,good,None,**draw_params)
-
+		
 		cv2.imshow('Detected', res)
 		#cv2.imshow('Matches',img3) # shows the matching lines for checking
-
-		plt.hist(distances,normed=False, bins = 30)
-		plt.ylabel('Probability')
 
 		k = cv2.waitKey(5) & 0xFF
 		if k ==27:
