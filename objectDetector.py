@@ -11,7 +11,7 @@ import sys
 import numpy as np
 import cv2
 import time
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 
 if __name__ == '__main__':
 	# some global variables
@@ -150,8 +150,8 @@ if __name__ == '__main__':
 		cv2.imshow('Detected', res)
 		#cv2.imshow('Matches',img3) # shows the matching lines for checking
 
-		plt.hist(distances,normed=False, bins = 30)
-		plt.ylabel('Probability')
+#		plt.hist(distances,normed=False, bins = 30)
+#		plt.ylabel('Probability')
 
 		k = cv2.waitKey(5) & 0xFF
 		if k ==27:
