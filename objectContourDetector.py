@@ -78,66 +78,79 @@ if __name__ == '__main__':
 		frame = cv2.resize(frame,(0,0),fx=0.5,fy=0.5)
 		#ox,oy = frame.shape
 		gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-		#rx,ry = frame.shape
+		fh,fw = frame.shape[:2]
 
 # with contour detection
-		kernel = np.ones((5,5),np.uint8)
-		res = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel)
-		edges = cv2.Canny(res, 10,100)
+#		th, im_th = cv2.threshold(gray,220,255, cv2.THRESH_BINARY)
+#		im_floodfill = im.th.copy
 
-		contours,hierarchy = cv2.findContours(edges.copy(),cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)[-2:]
-		
-		contours = [contour for contour in contours if len(contour) > (min(frame.shape)/10)]
-		res = cv2.drawContours(gray,contours,-1,255,3)
-
-#		t_start = time.clock()
-#		frameCount = frameCount + 1
+#		kernel = np.ones((5,5),np.uint8)
+#		res = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel)
+#		edges = cv2.Canny(res, 10,100)
 #
-#		# find features on the frame with SIFT/ORB
-#		kp2, des2 = detector.detectAndCompute(frame,None)
-#		t_detect = time.process_time()
-#
-#		if 'match' in sys.argv:
-#			good = matcher.match(des1,des2)	
-#			t_match = time.process_time()
-#		else:
-#			#change this if want to use any k
-#			matches = matcher.knnMatch(des1,des2,k=2)
-#			t_match = time.process_time()
-#			 
-#			# store all the good matches as per Lowe's ratio test.
-#			good = []
-#			distances = []
-#			
-#			for m,n in matches:
-#				distances.append(m.distance)
-#				if m.distance < 0.75*n.distance:
-#					good.append(m)
-#
-#		good = sorted(good, key = lambda x:x.distance)
-#		t_sort = time.process_time()
-#
-#		# if enough matches are found
-#		if len(good)>MIN_MATCH_COUNT:
-#			# extract location of points in both images
-#			src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
-#			dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
-#
-#			# find the perspective transform
-#			M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
-#			matchesMask = mask.ravel().tolist()
-#			
-#			# get the transform points in the (captured) query image
-#			h,w = img1.shape
-#			pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
-#			dst = cv2.perspectiveTransform(pts,M)
-#
-#			# draw the transformed image
-#			res = cv2.drawContours(frame,[np.int32(dst)],-1,255,3)
-#		else:
-#			res = frame
-#			matchesMask = None
+#		contours,hierarchy = cv2.findContours(edges.copy(),cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[-2:]
 #		
+#		contours = [contour for contour in contours if len(contour) > (min(frame.shape)/10)]
+#		mask = np.zeros(frame.shape, np.uint8)
+#		cv2.floodFill(im_floodfill, mask, (0,0),255)
+#		res = cv2.drawContours(mask,contours,-1,(255,255,255),3)
+#		mask_inv = cv2.bitwise_not(mask)
+		
+#		flood_mask = np.zeros((h+2,w+2), np.uint8)
+#		cv2.floodFill(mask_inv, flood_mask, (0,0), 255) 
+		t_start = time.clock()
+		frameCount = frameCount + 1
+
+		# find features on the frame with SIFT/ORB
+		kp2, des2 = detector.detectAndCompute(frame,None)
+		t_detect = time.process_time()
+
+		if 'match' in sys.argv:
+			good = matcher.match(des1,des2)	
+			t_match = time.process_time()
+		else:
+			#change this if want to use any k
+			matches = matcher.knnMatch(des1,des2,k=2)
+			t_match = time.process_time()
+			 
+			# store all the good matches as per Lowe's ratio test.
+			good = []
+			distances = []
+			
+			for m,n in matches:
+				distances.append(m.distance)
+				if m.distance < 0.75*n.distance:
+					good.append(m)
+
+		good = sorted(good, key = lambda x:x.distance)
+		t_sort = time.process_time()
+
+		# if enough matches are found
+		if len(good)>MIN_MATCH_COUNT:
+			# extract location of points in both images
+			src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
+			dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
+
+			# find the perspective transform
+			M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
+			matchesMask = mask.ravel().tolist()
+			
+			# get the transform points in the (captured) query image
+			h,w = img1.shape
+			pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
+			dst = cv2.perspectiveTransform(pts,M)
+
+			# draw the transformed image		
+			flood_mask = np.zeros((fh+2,fw+2), np.uint8)
+			mask = np.zeros(frame.shape, np.uint8)
+			cv2.drawContours(mask,[np.int32(dst)],-1,(255,255,255),3)
+			cv2.floodFill(mask,flood_mask,(0,0),(255,255,255))
+#			mask = cv2.bitwise_not(mask)
+			res = frame | mask
+		else:
+			res = frame
+			matchesMask = None
+		
 #		t_transform = time.process_time()
 #		print("%d, %.5f, %.5f, %.5f, %.5f, %d, %d, %d, %.5f, %.5f" % (frameCount, \
 #			t_detect-t_start, t_match-t_detect, t_sort-t_match, t_transform-t_sort, \
@@ -155,14 +168,15 @@ if __name__ == '__main__':
 #		#res = cv2.putText(res,rSizeInfo,(10,60), cv2.FONT_HERSHEY_SIMPLEX,\
 #		#	0.5, (10,10,10),1, cv2.LINE_AA)
 #	 
-#		draw_params = dict(matchColor = (0,255,0), singlePointColor = None,\
-#			matchesMask = matchesMask, flags = 2)
-#		img3 = cv2.drawMatches(img1,kp1,frame,kp2,good,None,**draw_params)
-#
-		cv2.putText(gray,"Contours : " + str(len(contours)), (100,50), cv2.FONT_HERSHEY_SIMPLEX, \
-			0.75, (50,175,50), 2)
+		draw_params = dict(matchColor = (0,255,0), singlePointColor = None,\
+			matchesMask = matchesMask, flags = 2)
+		img3 = cv2.drawMatches(img1,kp1,frame,kp2,good,None,**draw_params)
 
-		cv2.imshow('Detected', gray)
+#		cv2.putText(gray,"Contours : " + str(len(contours)), (100,50), cv2.FONT_HERSHEY_SIMPLEX, \
+#			0.75, (50,175,50), 2)
+
+		cv2.imshow('Detected', res)
+#		cv2.imshow('Masked', mask_inv)
 		#cv2.imshow('Matches',img3) # shows the matching lines for checking
 
 #		plt.hist(distances,normed=False, bins = 30)

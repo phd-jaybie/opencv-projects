@@ -72,11 +72,11 @@ if __name__ == '__main__':
 
 	while(frameCount<100):
 		# get each frame
-		_, frame = cap.read()
-		frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-		ox,oy = frame.shape
-		frame = cv2.resize(frame,(0,0),fx=0.5,fy=0.5)
-		rx,ry = frame.shape
+		_, raw = cap.read()
+		# frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), not necessary
+		# ox,oy = frame.shape
+		frame = cv2.resize(raw,(0,0),fx=0.5,fy=0.5)
+		# rx,ry = frame.shape
 
 		t_start = time.clock()
 		frameCount = frameCount + 1
@@ -121,7 +121,7 @@ if __name__ == '__main__':
 			dst = cv2.perspectiveTransform(pts,M)
 
 			# draw the transformed image
-			res = cv2.drawContours(frame,[np.int32(dst)],-1,255,3)
+			res = cv2.drawContours(frame,[np.int32(dst)],-1,(255,0,0),3)
 		else:
 			res = frame
 			matchesMask = None
@@ -148,13 +148,16 @@ if __name__ == '__main__':
 		img3 = cv2.drawMatches(img1,kp1,frame,kp2,good,None,**draw_params)
 
 		cv2.imshow('Detected', res)
-		#cv2.imshow('Matches',img3) # shows the matching lines for checking
+		cv2.imshow('Matches',img3) # shows the matching lines for checking
 
 #		plt.hist(distances,normed=False, bins = 30)
 #		plt.ylabel('Probability')
 
 		k = cv2.waitKey(5) & 0xFF
 		if k ==27:
+			cv2.imwrite("detected.png", res)
+			cv2.imwrite("matches.png", img3)
+			cv2.imwrite("raw.png", raw)
 			break
 
 	cap.release()
