@@ -4,10 +4,8 @@
 # Adapted from the image detection sample code from the openc-python
 # tutorial at http://docs.opencv.org/3.3.0/d1/de0/tutorial_py_feature_homography.html
 
-# Version info:	1.1.x 	this version shows histogram information of the distance calculation
+# Version info:	1.1 - 	this version shows histogram information of the distance calculation
 #			of the query and reference descriptors which was used for matching.
-#
-#		-.-.x	this version tries to segment the image into different regions first.
 
 import sys
 import numpy as np
@@ -74,30 +72,12 @@ if __name__ == '__main__':
 
 	while(frameCount<100):
 		# get each frame
-		_, frame = cap.read()
-		frame = cv2.resize(frame,(0,0),fx=0.5,fy=0.5)
-		#ox,oy = frame.shape
-		#gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+		_, raw = cap.read()
+		# frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), not necessary
+		# ox,oy = frame.shape
+		frame = cv2.resize(raw,(0,0),fx=0.5,fy=0.5)
 		fh,fw = frame.shape[:2]
 
-# with contour detection
-#		th, im_th = cv2.threshold(gray,220,255, cv2.THRESH_BINARY)
-#		im_floodfill = im.th.copy
-
-#		kernel = np.ones((5,5),np.uint8)
-#		res = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel)
-#		edges = cv2.Canny(res, 10,100)
-#
-#		contours,hierarchy = cv2.findContours(edges.copy(),cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)[-2:]
-#		
-#		contours = [contour for contour in contours if len(contour) > (min(frame.shape)/10)]
-#		mask = np.zeros(frame.shape, np.uint8)
-#		cv2.floodFill(im_floodfill, mask, (0,0),255)
-#		res = cv2.drawContours(mask,contours,-1,(255,255,255),3)
-#		mask_inv = cv2.bitwise_not(mask)
-		
-#		flood_mask = np.zeros((h+2,w+2), np.uint8)
-#		cv2.floodFill(mask_inv, flood_mask, (0,0), 255) 
 		t_start = time.clock()
 		frameCount = frameCount + 1
 
@@ -125,6 +105,8 @@ if __name__ == '__main__':
 		good = sorted(good, key = lambda x:x.distance)
 		t_sort = time.process_time()
 
+		mask2 = np.zeros(frame.shape, np.uint8)
+
 		# if enough matches are found
 		if len(good)>MIN_MATCH_COUNT:
 			# extract location of points in both images
@@ -140,50 +122,50 @@ if __name__ == '__main__':
 			pts = np.float32([ [0,0],[0,h-1],[w-1,h-1],[w-1,0] ]).reshape(-1,1,2)
 			dst = cv2.perspectiveTransform(pts,M)
 
-			# draw the transformed image		
+			# draw the transformed image
 			flood_mask = np.zeros((fh+2,fw+2), np.uint8)
-			mask = np.zeros(frame.shape, np.uint8)
-			cv2.drawContours(mask,[np.int32(dst)],-1,(255,255,255),3)
-			cv2.floodFill(mask,flood_mask,(0,0),(255,255,255))
-#			mask = cv2.bitwise_not(mask)
-			res = frame | mask
+			cv2.drawContours(frame,[np.int32(dst)],-1,(255,0,0),3)
+			cv2.drawContours(mask2,[np.int32(dst)],-1,(255,0,0),3)
+			cv2.floodFill(mask2,flood_mask,(0,0),(255,255,255))
+			res = frame | mask2
 		else:
-			res = frame
+			res = mask2
 			matchesMask = None
 		
-#		t_transform = time.process_time()
-#		print("%d, %.5f, %.5f, %.5f, %.5f, %d, %d, %d, %.5f, %.5f" % (frameCount, \
-#			t_detect-t_start, t_match-t_detect, t_sort-t_match, t_transform-t_sort, \
-#			len(des1),len(des2),len(good),good[0].distance,good[-1].distance))
-#
-#		# get processing time for each frame
-#		#td = t2 - t1
-#		#textTime = "Time to process this frame: " + str(td) + " seconds."
-#		#oSizeInfo = "Original res " + str(ox) + "x" + str(oy)
-#		#rSizeInfo = "New res " + str(rx) + "x" + str(ry)
-#		#res = cv2.putText(res,textTime,(10,30), cv2.FONT_HERSHEY_SIMPLEX,\
-#		#	0.5, (10,10,10),1, cv2.LINE_AA)
-#		#res = cv2.putText(res,oSizeInfo,(10,45), cv2.FONT_HERSHEY_SIMPLEX,\
-#		#	0.5, (10,10,10),1, cv2.LINE_AA)
-#		#res = cv2.putText(res,rSizeInfo,(10,60), cv2.FONT_HERSHEY_SIMPLEX,\
-#		#	0.5, (10,10,10),1, cv2.LINE_AA)
-#	 
+		t_transform = time.process_time()
+		print("%d, %.5f, %.5f, %.5f, %.5f, %d, %d, %d, %.5f, %.5f" % (frameCount, \
+			t_detect-t_start, t_match-t_detect, t_sort-t_match, t_transform-t_sort, \
+			len(des1),len(des2),len(good),good[0].distance,good[-1].distance))
+
+		# get processing time for each frame
+		#td = t2 - t1
+		#textTime = "Time to process this frame: " + str(td) + " seconds."
+		#oSizeInfo = "Original res " + str(ox) + "x" + str(oy)
+		#rSizeInfo = "New res " + str(rx) + "x" + str(ry)
+		#res = cv2.putText(res,textTime,(10,30), cv2.FONT_HERSHEY_SIMPLEX,\
+		#	0.5, (10,10,10),1, cv2.LINE_AA)
+		#res = cv2.putText(res,oSizeInfo,(10,45), cv2.FONT_HERSHEY_SIMPLEX,\
+		#	0.5, (10,10,10),1, cv2.LINE_AA)
+		#res = cv2.putText(res,rSizeInfo,(10,60), cv2.FONT_HERSHEY_SIMPLEX,\
+		#	0.5, (10,10,10),1, cv2.LINE_AA)
+	 
 		draw_params = dict(matchColor = (0,255,0), singlePointColor = None,\
 			matchesMask = matchesMask, flags = 2)
 		img3 = cv2.drawMatches(img1,kp1,frame,kp2,good,None,**draw_params)
 
-#		cv2.putText(gray,"Contours : " + str(len(contours)), (100,50), cv2.FONT_HERSHEY_SIMPLEX, \
-#			0.75, (50,175,50), 2)
-
-		cv2.imshow('Detected', res)
-#		cv2.imshow('Masked', mask_inv)
-		#cv2.imshow('Matches',img3) # shows the matching lines for checking
+		cv2.imshow('Sanitized', res)
+		cv2.imshow('Detected', frame)
+#		cv2.imshow('Matches',img3) # shows the matching lines for checking
 
 #		plt.hist(distances,normed=False, bins = 30)
 #		plt.ylabel('Probability')
 
 		k = cv2.waitKey(5) & 0xFF
-		if k ==27:
+		if k == 27:
+			cv2.imwrite("detected.png", frame)
+			cv2.imwrite("sanitized.png", res)
+#			cv2.imwrite("matches.png", img3)
+			cv2.imwrite("raw.png", raw)
 			break
 
 	cap.release()
