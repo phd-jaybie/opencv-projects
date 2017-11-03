@@ -1,7 +1,7 @@
 # Name: Always on 2D object detection 
 # Author: Jaybie A. de Guzman, 		Date: 20-Sep-2017
 # Description:
-# Adapted from the image detection sample code from the openc-python
+# Adapted from the image detection sample code from the opencv-python
 # tutorial at http://docs.opencv.org/3.3.0/d1/de0/tutorial_py_feature_homography.html
 
 # Version info:	1.1 - 	this version shows histogram information of the distance calculation
