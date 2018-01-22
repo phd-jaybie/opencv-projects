@@ -1,10 +1,12 @@
 # Name: Always on 2D object detection 
-# Author: Jaybie A. de Guzman, 		Date: 20-Sep-2017
+# Author: Jaybie A. de Guzman, 		Date: 22-Jan-2018
 # Description:
 # Adapted from the image detection sample code from the opencv-python
 # tutorial at http://docs.opencv.org/3.3.0/d1/de0/tutorial_py_feature_homography.html
 
-# Version info:	2.0 - this version is the stable implementation with argument handling.
+# Version info:	4.0 - this version uses ORB for detection and hopefully for SLAM.
+
+#			2.0 - this version is the stable implementation with argument handling.
 
 #			1.1 - 	this version shows information of the distance calculation
 #			of the query and reference descriptors which was used for matching.
@@ -28,6 +30,9 @@ if __name__ == '__main__':
 			FLANN_INDEX_KDTREE = 0
 			index_params = dict(algorithm = FLANN_INDEX_KDTREE, tree = 5)
 			print("Using SIFT algorithm")
+		elif 'orb' in sys.argv:
+			detector = cv2.ORB_create()
+			print("Using ORB algorithm")
 		else:
 			detector = cv2.BRISK_create()
 			FLANN_INDEX_LSH = 6
@@ -70,7 +75,7 @@ if __name__ == '__main__':
 	# find the keypoints and descriptors from the training image with SIFT
 	kp1, des1 = detector.detectAndCompute(img1,None)
 
-	print("Frame, t_detect, t_match, t_sort , t_transform, Training Descriptors, Query Descriptors, Matches, Min Distance, Max Distance")
+	#print("Frame, t_detect, t_match, t_sort , t_transform, Training Descriptors, Query Descriptors, Matches, Min Distance, Max Distance")
 
 	while(frameCount<100):
 		# get each frame
@@ -78,7 +83,7 @@ if __name__ == '__main__':
 		# frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), not necessary
 		# ox,oy = frame.shape
 		frame = cv2.resize(raw,(0,0),fx=0.5,fy=0.5)
-		# rx,ry = frame.shape
+		fh,fw = frame.shape[:2]
 
 		t_start = time.clock()
 		frameCount = frameCount + 1
@@ -107,8 +112,10 @@ if __name__ == '__main__':
 		good = sorted(good, key = lambda x:x.distance)
 		t_sort = time.process_time()
 
+		mask2 = np.zeros(frame.shape, np.uint8)
+
 		# if enough matches are found
-		if len(good)>int(len(des2)/2):
+		if len(good)>MIN_MATCH_COUNT:
 			# extract location of points in both images
 			src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
 			dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
@@ -123,15 +130,19 @@ if __name__ == '__main__':
 			dst = cv2.perspectiveTransform(pts,M)
 
 			# draw the transformed image
-			res = cv2.drawContours(frame,[np.int32(dst)],-1,(255,0,0),3)
+			flood_mask = np.zeros((fh+2,fw+2), np.uint8)
+			cv2.drawContours(frame,[np.int32(dst)],-1,(255,0,0),3)
+			cv2.drawContours(mask2,[np.int32(dst)],-1,(255,0,0),3)
+			cv2.floodFill(mask2,flood_mask,(0,0),(255,255,255))
+			res = frame | mask2
 		else:
-			res = frame
+			res = mask2
 			matchesMask = None
 		
 		t_transform = time.process_time()
-		print("%d, %.5f, %.5f, %.5f, %.5f, %d, %d, %d, %.5f, %.5f" % (frameCount, \
-			t_detect-t_start, t_match-t_detect, t_sort-t_match, t_transform-t_sort, \
-			len(des1),len(des2),len(good),good[0].distance,good[-1].distance))
+		#print("%d, %.5f, %.5f, %.5f, %.5f, %d, %d, %d, %.5f, %.5f" % (frameCount, \
+			#t_detect-t_start, t_match-t_detect, t_sort-t_match, t_transform-t_sort, \
+			#len(des1),len(des2),len(good),good[0].distance,good[-1].distance))
 
 		# get processing time for each frame
 		#td = t2 - t1
@@ -148,8 +159,13 @@ if __name__ == '__main__':
 		draw_params = dict(matchColor = (0,255,0), singlePointColor = None,\
 			matchesMask = matchesMask, flags = 2)
 		img3 = cv2.drawMatches(img1,kp1,frame,kp2,good,None,**draw_params)
+        
+		frameRate = 1/(t_transform - t_start)
+		frameRateText = "Frame Rate: " + str(frameRate)
+		cv2.putText(res, frameRateText, (10,30), cv2.FONT_HERSHEY_SIMPLEX, \
+			0.5, (10,10,10),1, cv2.LINE_AA)
 
-		cv2.imshow('Detected', res)
+		cv2.imshow('Detected -> Sanitized', res)
 		cv2.imshow('Matches',img3) # shows the matching lines for checking
 
 #		plt.hist(distances,normed=False, bins = 30)

@@ -1,12 +1,14 @@
 # Name: Always on 2D object detection 
-# Author: Jaybie A. de Guzman, 		Date: 20-Sep-2017
+# Author: Jaybie A. de Guzman, 		Date: 13-Nov-2017
 # Description:
 # Adapted from the image detection sample code from the opencv-python
 # tutorial at http://docs.opencv.org/3.3.0/d1/de0/tutorial_py_feature_homography.html
 
-# Version info:	2.0 - this version is the stable implementation with argument handling.
+# Version info: 3.1 - this is supposed to be an enhancement of a pure SIFT-based
+#			object matching but uses FAST for keypoint detection instead of SIFT. But
+#			this approach is slower than the original pure SIFT implementation.
 
-#			1.1 - 	this version shows information of the distance calculation
+#			1.1 - 	this version shows histogram information of the distance calculation
 #			of the query and reference descriptors which was used for matching.
 
 import sys
@@ -49,10 +51,11 @@ if __name__ == '__main__':
 		else:
 			print("Using knn matching")
 	else:
-		detector = cv2.xfeatures2d.SIFT_create()
+		detector = cv2.FastFeatureDetector_create()
+		descriptor = cv2.xfeatures2d.SIFT_create()
 		FLANN_INDEX_KDTREE = 0
 		index_params = dict(algorithm = FLANN_INDEX_KDTREE, tree = 5)
-		print("Default: Using SIFT algorithm")
+		print("Default: Using FAST-SIFT algorithm")
 		matcher = cv2.FlannBasedMatcher(index_params, search_params)
 		print("Default: Using flann-based matcher")
 		print("Default: Using knn matching")
@@ -68,7 +71,8 @@ if __name__ == '__main__':
 	frameCount = 0
 	
 	# find the keypoints and descriptors from the training image with SIFT
-	kp1, des1 = detector.detectAndCompute(img1,None)
+	kp1 = detector.detect(img1,None)
+	_, des1 = descriptor.compute(img1,kp1,None)
 
 	print("Frame, t_detect, t_match, t_sort , t_transform, Training Descriptors, Query Descriptors, Matches, Min Distance, Max Distance")
 
@@ -84,7 +88,8 @@ if __name__ == '__main__':
 		frameCount = frameCount + 1
 
 		# find features on the frame with SIFT/ORB
-		kp2, des2 = detector.detectAndCompute(frame,None)
+		kp2 = detector.detect(frame,None)
+		_, des2 = descriptor.compute(frame,kp2,None)
 		t_detect = time.process_time()
 
 		if 'match' in sys.argv:
@@ -97,18 +102,18 @@ if __name__ == '__main__':
 			 
 			# store all the good matches as per Lowe's ratio test.
 			good = []
-			distances = []
-			
+#			distances = []
+#			
 			for m,n in matches:
-				distances.append(m.distance)
-				if m.distance < 0.75*n.distance:
-					good.append(m)
+#				distances.append(m.distance)
+#				if m.distance < 0.75*n.distance:
+				good.append(m)
 
 		good = sorted(good, key = lambda x:x.distance)
 		t_sort = time.process_time()
 
 		# if enough matches are found
-		if len(good)>int(len(des2)/2):
+		if len(good)>MIN_MATCH_COUNT:
 			# extract location of points in both images
 			src_pts = np.float32([ kp1[m.queryIdx].pt for m in good ]).reshape(-1,1,2)
 			dst_pts = np.float32([ kp2[m.trainIdx].pt for m in good ]).reshape(-1,1,2)
@@ -156,10 +161,6 @@ if __name__ == '__main__':
 #		plt.ylabel('Probability')
 
 		k = cv2.waitKey(5) & 0xFF
-		if k ==27:
-			cv2.imwrite("detected.png", res)
-			cv2.imwrite("matches.png", img3)
-			cv2.imwrite("raw.png", raw)
 			break
 
 	cap.release()

@@ -4,7 +4,11 @@
 # Adapted from the image detection sample code from the openc-python
 # tutorial at http://docs.opencv.org/3.3.0/d1/de0/tutorial_py_feature_homography.html
 
-# Version info:	1.1 - 	this version shows histogram information of the distance calculation
+# Version info:	2.5 - this version is the stable implementation with crude securitydemo.
+
+#			2.0 - this version is the stable implementation with argument handling.
+
+#			1.1 - 	this version shows histogram information of the distance calculation
 #			of the query and reference descriptors which was used for matching.
 
 import sys
@@ -162,10 +166,10 @@ if __name__ == '__main__':
 
 		k = cv2.waitKey(5) & 0xFF
 		if k == 27:
-			cv2.imwrite("detected.png", frame)
-			cv2.imwrite("sanitized.png", res)
+#			cv2.imwrite("detected.png", frame)
+#			cv2.imwrite("sanitized.png", res)
 #			cv2.imwrite("matches.png", img3)
-			cv2.imwrite("raw.png", raw)
+#			cv2.imwrite("raw.png", raw)
 			break
 
 	cap.release()

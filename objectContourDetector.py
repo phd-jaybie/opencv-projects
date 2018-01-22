@@ -4,10 +4,10 @@
 # Adapted from the image detection sample code from the openc-python
 # tutorial at http://docs.opencv.org/3.3.0/d1/de0/tutorial_py_feature_homography.html
 
-# Version info:	1.1.x 	this version shows histogram information of the distance calculation
+# Version info:	1.9 	this version shows histogram information of the distance calculation
 #			of the query and reference descriptors which was used for matching.
 #
-#		-.-.x	this version tries to segment the image into different regions first.
+#		1.1	this version tries to segment the image into different regions first.
 
 import sys
 import numpy as np
