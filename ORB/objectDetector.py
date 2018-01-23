@@ -32,7 +32,11 @@ if __name__ == '__main__':
 			print("Using SIFT algorithm")
 		elif 'orb' in sys.argv:
 			detector = cv2.ORB_create()
-			print("Using ORB algorithm")
+			print("Using ORB for detection.")
+			descriptor = cv2.xfeatures2d.SIFT_create()
+			FLANN_INDEX_KDTREE = 0
+			index_params = dict(algorithm = FLANN_INDEX_KDTREE, tree = 5)
+			print("Using SIFT for decription.")
 		else:
 			detector = cv2.BRISK_create()
 			FLANN_INDEX_LSH = 6
@@ -45,7 +49,8 @@ if __name__ == '__main__':
 			matcher = cv2.FlannBasedMatcher(index_params, search_params)
 			print("Using flann-based matcher")
 		else:
-			matcher = cv2.BFMatcher()
+			matcher = cv2.BFMatcher() #for regular descriptors
+			#matcher = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True) # for ORB keypoints
 			print("Using brute force matcher")
 		
 		# from arguments, check matching algorithm
@@ -74,6 +79,8 @@ if __name__ == '__main__':
 	
 	# find the keypoints and descriptors from the training image with SIFT
 	kp1, des1 = detector.detectAndCompute(img1,None)
+	#kp1 = detector.detect(img1,None)
+	#__, des1 = descriptor.compute(img1, kp1)
 
 	#print("Frame, t_detect, t_match, t_sort , t_transform, Training Descriptors, Query Descriptors, Matches, Min Distance, Max Distance")
 
@@ -90,6 +97,8 @@ if __name__ == '__main__':
 
 		# find features on the frame with SIFT/ORB
 		kp2, des2 = detector.detectAndCompute(frame,None)
+		#kp2 = detector.detect(frame,None)
+		#__, des2 = descriptor.compute(frame, kp2)
 		t_detect = time.process_time()
 
 		if 'match' in sys.argv:
@@ -104,10 +113,10 @@ if __name__ == '__main__':
 			good = []
 			distances = []
 			
-			for m,n in matches:
-				distances.append(m.distance)
-				if m.distance < 0.75*n.distance:
-					good.append(m)
+			#for m,n in matches:
+			#	distances.append(m.distance)
+			#	if m.distance < 0.75*n.distance:
+			#		good.append(m)
 
 		good = sorted(good, key = lambda x:x.distance)
 		t_sort = time.process_time()
@@ -134,6 +143,7 @@ if __name__ == '__main__':
 			cv2.drawContours(frame,[np.int32(dst)],-1,(255,0,0),3)
 			cv2.drawContours(mask2,[np.int32(dst)],-1,(255,0,0),3)
 			cv2.floodFill(mask2,flood_mask,(0,0),(255,255,255))
+			cv2.drawKeypoints(frame,kp2,frame,color=(0,255,0), flags=4)
 			res = frame | mask2
 		else:
 			res = mask2
